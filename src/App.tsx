@@ -4,11 +4,12 @@ import {WFProcess, BasicStep, ApprovalStep, Branch, DesignerStep, newBranch} fro
 import {nanoid} from "nanoid";
 import produce from "immer";
 import {Tabs, TabDef} from "./Tabs";
-import {randSuperheroName} from "@ngneat/falso";
+import {randSuperheroName, randFirstName} from "@ngneat/falso";
+import {WfProcessViewer} from "./ProcessViewer/ProcessViewer";
 
 const Root = styled.div`
   display: grid;
-  grid-template-columns:  1fr 1fr;
+  grid-template-columns:  3fr 1fr;
 `;
 
 const Button = styled.button`
@@ -17,7 +18,6 @@ const Button = styled.button`
 `;
 const Playground = styled.div`
   height: 100vh;
-  width: 50vw;
   overflow: auto;
   border: 1px solid;
   background: #c3dbe7;
@@ -29,7 +29,6 @@ const Viewer = styled.div`
   border: 1px solid;
   background: #9fa6b9;
   height: 100%;
-  width: 49.5vw;
   overflow: auto;
 `;
 
@@ -39,14 +38,15 @@ const defaultHead: Branch = {
     endStep: '',
     label: "next"
 };
+const defaultProcess={
+    head: defaultHead,
+    branches: [defaultHead],
+    steps: {},
+    startStepId: ''
+};
 
 function App() {
-    const [wfProcess, setWfProcess] = useState<WFProcess>({
-        head: defaultHead,
-        branches: [],
-        steps: {},
-        startStepId: ''
-    });
+    const [wfProcess, setWfProcess] = useState<WFProcess>(defaultProcess);
     const [selectedStep, setSelectedStep] = useState<DesignerStep | undefined>();
     const json = useMemo(() => JSON.stringify(wfProcess, null, 2), [wfProcess]);
     const selectedJson = useMemo(() => JSON.stringify(selectedStep, null, 2), [selectedStep]);
@@ -60,9 +60,9 @@ function App() {
     const onAdd = () => {
         const newProcess = produce(wfProcess, draft => {
             const {head, steps} = draft;
-            const stepName = randSuperheroName();
+            const stepName = randFirstName();
             const newStep: BasicStep = {
-                id: `${stepName}_${nanoid()}`,
+                id: nanoid(),
                 type: "basic",
                 prevStep: head.endStep,
                 name: stepName
@@ -76,9 +76,13 @@ function App() {
                     prevStep[head.label as any] = newStep.id;
                 }
                 else{
-                    prevStep.next=newStep.id;
+                    prevStep.nextStep=newStep.id;
                 }
             }
+            if(!newStep.prevStep){
+                draft.startStepId=newStep.id
+            }
+
         });
         setWfProcess(newProcess);
 
@@ -90,8 +94,8 @@ function App() {
                 id: `${stepName}_${nanoid()}`,
                 type: "approval",
                 name: stepName,
-                approveStep: '',
-                denyStep: ''
+                approve: '',
+                deny: ''
 
             };
             const {branches, head, steps} = draft;
@@ -104,7 +108,7 @@ function App() {
                 if (prevStep.id === head.ref) {
                     prevStep[head.label] = newStep.id;
                 } else {
-                    prevStep.nextStepId = newStep.id;
+                    prevStep.nextStep = newStep.id;
                 }
                 newStep.prevStep = head.endStep;
             }
@@ -113,6 +117,9 @@ function App() {
             saveHeadDraft(draft);
             draft.head = approveBranch;
             steps[newStep.id] = newStep;
+            if(!newStep.prevStep){
+                draft.startStepId=newStep.id
+            }
         });
         setWfProcess(newProcess);
     };
@@ -122,6 +129,7 @@ function App() {
 
     const removeStep = () => {
     };
+
     const changeBranch = (newBranch: Branch) => {
         const newProcess = produce(wfProcess, draft => {
             const {head, branches, steps} = draft;
@@ -151,6 +159,7 @@ function App() {
                     <Button onClick={onAdd}>Add Basic</Button>
                     <Button onClick={onAddApproval}>Add Approval</Button>
                     <Tabs process={wfProcess} onSelectChanged={changeStep} onBranchChaged={changeBranch}/>
+                     <WfProcessViewer wfProcess={wfProcess}/>
                 </div>
                 <Viewer>
                     <Button onClick={removeStep}>Remove</Button>

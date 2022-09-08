@@ -14,8 +14,8 @@ export interface BasicStep extends Step {
 
 export interface ApprovalStep extends Step {
     type: "approval";
-    approveStep? : string;
-    denyStep? : string;
+    approve? : string;
+    deny? : string;
 }
 
 export type  DesignerStep =  ApprovalStep|BasicStep;
